@@ -83,89 +83,88 @@ const Cart = () => {
     // ==========================================
     // REMOVE CART ITEM
     // ==========================================
+const handleRemoveFromCart = async (cartItemId) => {
 
-    const handleRemoveFromCart = async (
-        cartItemId
-    ) => {
+    try {
 
-        try {
+        console.log(
+            "========== REMOVE CART ITEM =========="
+        );
 
-            console.log(
-                "========== REMOVE CART ITEM =========="
-            );
+        console.log(
+            "Cart Item ID:",
+            cartItemId
+        );
 
-            console.log(
-                "Cart Item ID:",
-                cartItemId
-            );
+        setRemovingItemId(cartItemId);
 
+        // ==================================
+        // DELETE FROM BACKEND
+        // ==================================
 
-            // Show loading state on button
+        await removeFromCart(cartItemId);
 
-            setRemovingItemId(cartItemId);
-
-
-            // ==================================
-            // DELETE FROM BACKEND
-            // ==================================
-
-            await removeFromCart(cartItemId);
+        console.log(
+            "Cart item deleted successfully from backend"
+        );
 
 
-            console.log(
-                "Cart item deleted successfully"
-            );
+        // ==================================
+        // UPDATE FRONTEND CART STATE
+        // REMOVE ONLY THE DELETED ITEM
+        // ==================================
 
+        setCart((previousCart) => {
 
-            // ==================================
-            // IMPORTANT:
-            // FETCH THE NEW CART FROM BACKEND
-            // ==================================
+            if (!previousCart) {
+                return previousCart;
+            }
 
-            console.log(
-                "Fetching updated cart after deletion..."
-            );
-
-            const updatedCart =
-                await myCart();
-
+            const updatedItems =
+                previousCart.cartItems.filter(
+                    (item) => item.id !== cartItemId
+                );
 
             console.log(
-                "Updated Cart:",
-                updatedCart
+                "Previous Cart Items:",
+                previousCart.cartItems
             );
-
-
-            // Update React state
-
-            setCart(updatedCart);
-
 
             console.log(
-                "Cart UI updated successfully"
+                "Updated Cart Items:",
+                updatedItems
             );
 
+            return {
+                ...previousCart,
+                cartItems: updatedItems
+            };
 
-        } catch (error) {
-
-            console.error(
-                "Failed to remove product:",
-                error
-            );
-
-            alert(
-                "Failed to remove product from cart."
-            );
+        });
 
 
-        } finally {
+        console.log(
+            "Cart UI updated successfully"
+        );
 
-            setRemovingItemId(null);
+    } catch (error) {
 
-        }
+        console.error(
+            "Failed to remove product:",
+            error
+        );
 
-    };
+        alert(
+            "Failed to remove product from cart."
+        );
 
+    } finally {
+
+        setRemovingItemId(null);
+
+    }
+
+};
 
     // ==========================================
     // PROCEED TO CHECKOUT
