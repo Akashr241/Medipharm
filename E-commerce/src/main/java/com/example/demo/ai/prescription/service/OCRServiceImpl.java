@@ -31,12 +31,10 @@ import org.springframework.web.server.ResponseStatusException;
 
 import javax.imageio.ImageIO;
 
-import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-
 
 @Service
 public class OCRServiceImpl implements OCRService {
@@ -87,11 +85,9 @@ public class OCRServiceImpl implements OCRService {
         this.objectMapper = new ObjectMapper();
 
         this.sightengineApiUser = sightengineApiUser;
-
         this.sightengineApiSecret = sightengineApiSecret;
 
         this.aiRejectThreshold = aiRejectThreshold;
-
         this.aiDetectionEnabled = aiDetectionEnabled;
 
         log.info("Simple OCR Service Ready");
@@ -106,12 +102,15 @@ public class OCRServiceImpl implements OCRService {
     @Override
     public String extractText(MultipartFile file) {
 
+        long startTime = System.currentTimeMillis();
+
         log.info("========== OCR STARTED ==========");
 
-        // 1. Validate
+        // 1. Validate file
         validateFile(file);
 
-        // 2. Read image
+
+        // 2. Read uploaded image
         byte[] imageBytes;
 
         try {
@@ -128,7 +127,7 @@ public class OCRServiceImpl implements OCRService {
         }
 
 
-        // 3. AI image detection
+        // 3. AI-generated image verification
         if (aiDetectionEnabled) {
 
             rejectIfAiGenerated(
@@ -139,49 +138,31 @@ public class OCRServiceImpl implements OCRService {
 
 
         // 4. Convert bytes to image
-        BufferedImage originalImage =
+        BufferedImage image =
                 readImageFromBytes(imageBytes);
 
 
         log.info(
                 "Image: {} | Size: {}x{}",
                 file.getOriginalFilename(),
-                originalImage.getWidth(),
-                originalImage.getHeight()
+                image.getWidth(),
+                image.getHeight()
         );
 
 
         // =================================================
-        // OCR #1 - ORIGINAL IMAGE
+        // SINGLE OCR PASS
         // =================================================
 
-        String originalText =
-                performOcr(originalImage);
-
-
-        // =================================================
-        // OCR #2 - GRAYSCALE IMAGE
-        // =================================================
-
-        BufferedImage grayscaleImage =
-                createGrayscaleImage(originalImage);
-
-        String grayscaleText =
-                performOcr(grayscaleImage);
+        String extractedText =
+                performOcr(image);
 
 
         // =================================================
-        // CHOOSE BETTER RESULT
+        // VALIDATE OCR RESULT
         // =================================================
 
-        String bestText =
-                chooseBetterText(
-                        originalText,
-                        grayscaleText
-                );
-
-
-        if (bestText.isBlank()) {
+        if (extractedText.isBlank()) {
 
             throw new ResponseStatusException(
                     HttpStatus.UNPROCESSABLE_ENTITY,
@@ -190,15 +171,23 @@ public class OCRServiceImpl implements OCRService {
         }
 
 
-        log.info("========== OCR COMPLETED ==========");
-        log.info("OCR Text:\n{}", bestText);
+        long endTime = System.currentTimeMillis();
 
-        return bestText;
+        log.info(
+                "OCR completed in {} ms",
+                endTime - startTime
+        );
+
+        log.info("========== OCR COMPLETED ==========");
+        log.info("OCR Text:\n{}", extractedText);
+
+
+        return extractedText;
     }
 
 
     // =====================================================
-    // SIMPLE OCR
+    // TESSERACT OCR
     // =====================================================
 
     private String performOcr(
@@ -209,7 +198,8 @@ public class OCRServiceImpl implements OCRService {
 
             synchronized (tesseract) {
 
-                // PSM 6 = Assume a block of text
+                // PSM 6:
+                // Assume the image contains one block of text.
                 tesseract.setPageSegMode(6);
 
                 String text =
@@ -225,75 +215,12 @@ public class OCRServiceImpl implements OCRService {
                     exception
             );
 
-            return "";
+            throw new ResponseStatusException(
+                    HttpStatus.UNPROCESSABLE_ENTITY,
+                    "Unable to extract text from prescription",
+                    exception
+            );
         }
-    }
-
-
-    // =====================================================
-    // CHOOSE BETTER OCR RESULT
-    // =====================================================
-
-    private String chooseBetterText(
-            String first,
-            String second
-    ) {
-
-        if (first == null || first.isBlank()) {
-            return second == null ? "" : second;
-        }
-
-        if (second == null || second.isBlank()) {
-            return first;
-        }
-
-
-        /*
-         * Simple scoring:
-         *
-         * More letters/numbers
-         * = probably better OCR text
-         */
-
-        int firstScore =
-                calculateSimpleScore(first);
-
-        int secondScore =
-                calculateSimpleScore(second);
-
-
-        log.info(
-                "OCR Scores | Original: {} | Grayscale: {}",
-                firstScore,
-                secondScore
-        );
-
-
-        return firstScore >= secondScore
-                ? first
-                : second;
-    }
-
-
-    // =====================================================
-    // SIMPLE OCR SCORE
-    // =====================================================
-
-    private int calculateSimpleScore(
-            String text
-    ) {
-
-        int score = 0;
-
-        for (char c : text.toCharArray()) {
-
-            if (Character.isLetterOrDigit(c)) {
-
-                score++;
-            }
-        }
-
-        return score;
     }
 
 
@@ -312,13 +239,13 @@ public class OCRServiceImpl implements OCRService {
         boolean userConfigured =
                 sightengineApiUser != null
                         &&
-                        !sightengineApiUser.isBlank();
+                !sightengineApiUser.isBlank();
 
 
         boolean secretConfigured =
                 sightengineApiSecret != null
                         &&
-                        !sightengineApiSecret.isBlank();
+                !sightengineApiSecret.isBlank();
 
 
         if (!userConfigured || !secretConfigured) {
@@ -584,44 +511,6 @@ public class OCRServiceImpl implements OCRService {
                     exception
             );
         }
-    }
-
-
-    // =====================================================
-    // CREATE GRAYSCALE IMAGE
-    // =====================================================
-
-    private BufferedImage createGrayscaleImage(
-            BufferedImage originalImage
-    ) {
-
-        BufferedImage grayscaleImage =
-                new BufferedImage(
-
-                        originalImage.getWidth(),
-
-                        originalImage.getHeight(),
-
-                        BufferedImage.TYPE_BYTE_GRAY
-                );
-
-
-        Graphics2D graphics =
-                grayscaleImage.createGraphics();
-
-
-        graphics.drawImage(
-                originalImage,
-                0,
-                0,
-                null
-        );
-
-
-        graphics.dispose();
-
-
-        return grayscaleImage;
     }
 
 
