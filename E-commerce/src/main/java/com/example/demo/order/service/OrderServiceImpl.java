@@ -127,6 +127,7 @@ String email = SecurityContextHolder
     }
     
 @Override
+@Transactional(readOnly=true)
 public List<OrderHistoryResponseDto> getMyOrders() {
 
     Authentication authentication =
