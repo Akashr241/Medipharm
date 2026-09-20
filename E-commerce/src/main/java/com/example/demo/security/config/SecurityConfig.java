@@ -22,6 +22,10 @@ public class SecurityConfig {
     @Value("${app.frontend.url}")
     private String frontendUrl;
 
+    
+
+@Value("${spring.security.oauth2.client.registration.google.client-id}")
+private String googleClientId;
 
     private final JwtFilter jwtFilter;
 
@@ -59,9 +63,15 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http
     ) throws Exception {
+   System.out.println("========================================");
+    System.out.println("GOOGLE OAUTH DEBUG");
+    System.out.println("GOOGLE CLIENT ID = [" + googleClientId + "]");
+    System.out.println("CLIENT ID LENGTH = " + googleClientId.length());
+    System.out.println("========================================");
 
         http
 
+     
 
                 // =================================================
                 // CORS

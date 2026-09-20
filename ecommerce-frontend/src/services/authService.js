@@ -1,4 +1,4 @@
-import api from "./api";
+import API from "./api";
 
 // ==========================================
 // REGISTER
@@ -15,7 +15,7 @@ export const registerUser = async (userData) => {
 
     try {
 
-        const response = await api.post(
+        const response = await API.post(
             "/auth/register",
             userData
         );
@@ -100,7 +100,7 @@ export const loginUser = async (credentials) => {
 
     try {
 
-        const response = await api.post(
+        const response = await API.post(
             "/auth/login",
             credentials
         );
