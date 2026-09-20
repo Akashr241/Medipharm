@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import axios from "axios";
+import { getMyOrders } from "../services/orderService.js";
 
 function Orders() {
   const [orders, setOrders] = useState([]);
@@ -13,19 +13,10 @@ function Orders() {
 
   const loadOrders = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const response = await getMyOrders();
 
-      const response = await axios.get(
-        "http://localhost:8080/orders/my-orders",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
-
-      console.log("My Orders:", response.data);
-      setOrders(response.data);
+      console.log("My Orders:", response);
+      setOrders(response);
     } catch (error) {
       console.log("Error loading orders:", error);
       setError("Unable to load your orders.");
@@ -53,7 +44,7 @@ function Orders() {
 
   if (loading) {
     return (
-      <div 
+      <div
         className="min-vh-100 bg-light d-flex justify-content-center align-items-center"
         style={{ paddingTop: "90px" }}
       >
@@ -90,7 +81,7 @@ function Orders() {
   return (
     <div className="bg-light min-vh-100 pb-5" style={{ paddingTop: "90px" }}>
       <div className="container" style={{ maxWidth: "900px" }}>
-        
+
         {/* Page Header */}
         <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-4">
           <div>
@@ -137,7 +128,7 @@ function Orders() {
               >
                 <div className="card-body p-4">
                   <div className="row align-items-center gy-3">
-                    
+
                     {/* Order Icon & Number */}
                     <div className="col-md-5">
                       <div className="d-flex align-items-center gap-3">
