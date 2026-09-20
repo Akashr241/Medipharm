@@ -189,6 +189,7 @@ public List<OrderResponseDto> getAllOrders() {
             .toList();
 }
 @Override
+@Transactional(readOnly=true)
 public OrderResponseDto getOrderById(Long orderId) {
 
     Order order = orderRepository.findById(orderId)
@@ -197,6 +198,7 @@ public OrderResponseDto getOrderById(Long orderId) {
 
     return OrderMapper.mapToOrderResponseDto(order);
 }
+
 @Override
 public void cancelOrder(Long orderId) {
     Order order = orderRepository.findById(orderId)
