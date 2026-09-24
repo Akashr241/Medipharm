@@ -114,33 +114,31 @@ const handleRemoveFromCart = async (cartItemId) => {
         // REMOVE ONLY THE DELETED ITEM
         // ==================================
 
-        setCart((previousCart) => {
-
-            if (!previousCart) {
-                return previousCart;
-            }
-
-            const updatedItems =
-                previousCart.cartItems.filter(
-                    (item) => item.id !== cartItemId
-                );
-
             console.log(
-                "Previous Cart Items:",
-                previousCart.cartItems
+                "Fetching updated cart after deletion..."
             );
 
+            const updatedCart =
+                await myCart();
+
+
             console.log(
-                "Updated Cart Items:",
-                updatedItems
+                "Updated Cart:",
+                updatedCart
             );
 
-            return {
-                ...previousCart,
-                cartItems: updatedItems
-            };
 
-        });
+            // Update React state
+
+            setCart(updatedCart);
+
+
+            console.log(
+                "Cart UI updated successfully"
+            );
+
+
+
 
 
         console.log(
