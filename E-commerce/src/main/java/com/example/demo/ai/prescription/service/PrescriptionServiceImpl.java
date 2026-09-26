@@ -25,6 +25,7 @@ public class PrescriptionServiceImpl
     private final ProductRepository productRepository;
     private final MedicineNameNormalizer normalizer;
 
+
     public PrescriptionServiceImpl(
             GeminiClient geminiClient,
             ObjectMapper objectMapper,
@@ -39,9 +40,10 @@ public class PrescriptionServiceImpl
         this.normalizer = normalizer;
     }
 
+
     @Override
-    public List<PrescriptionResponseDto> analyzePrescription(
-            String extractedText) {
+    public List<PrescriptionResponseDto>
+    analyzePrescription(String extractedText) {
 
         System.out.println(
                 "========== PRESCRIPTION SERVICE =========="
@@ -55,9 +57,9 @@ public class PrescriptionServiceImpl
         );
 
 
-        // =====================================================
-        // STEP 1: GEMINI
-        // =====================================================
+        // ==========================================
+        // STEP 1: GEMINI AI ANALYSIS
+        // ==========================================
 
         String prompt = """
 
@@ -66,18 +68,10 @@ public class PrescriptionServiceImpl
                 Analyze the following OCR text extracted
                 from a doctor's prescription.
 
-                Identify EVERY medicine prescribed.
+                Identify every medicine prescribed.
 
                 OCR text may contain spelling mistakes.
                 Correct obvious OCR mistakes using medical context.
-
-                IMPORTANT:
-
-                - Do not skip any medicine.
-                - If 4 medicines are present, return 4 medicines.
-                - Do not merge two different medicines.
-                - Do not duplicate medicines.
-                - Do not invent medicines that are not present.
 
                 For every medicine return:
 
@@ -109,7 +103,8 @@ public class PrescriptionServiceImpl
                 The name of the medicine.
 
                 dosage:
-                The strength or dosage such as 500mg, 5ml, etc.
+                The strength or dosage such as 500mg,
+                5ml, etc.
 
                 frequency:
                 How often the medicine should be taken.
@@ -126,7 +121,8 @@ public class PrescriptionServiceImpl
                 """ + extractedText;
 
 
-        String aiResult = geminiClient.askGemini(prompt);
+        String aiResult =
+                geminiClient.askGemini(prompt);
 
 
         System.out.println(
@@ -136,11 +132,13 @@ public class PrescriptionServiceImpl
         System.out.println(aiResult);
 
 
-        // =====================================================
-        // STEP 2: CLEAN JSON
-        // =====================================================
+        // ==========================================
+        // STEP 2: CLEAN GEMINI RESPONSE
+        // ==========================================
 
-        String cleanResult = cleanJson(aiResult);
+        String cleanResult =
+                cleanJson(aiResult);
+
 
         List<PrescriptionResponseDto> finalResults =
                 new ArrayList<>();
@@ -152,56 +150,35 @@ public class PrescriptionServiceImpl
                     objectMapper.readTree(cleanResult);
 
 
-            if (!medicines.isArray()) {
-
-                throw new RuntimeException(
-                        "Gemini response is not a JSON array"
-                );
-            }
-
-
-            System.out.println(
-                    "TOTAL MEDICINES DETECTED BY GEMINI: "
-                            + medicines.size()
-            );
-
-
-            // =================================================
+            // ==========================================
             // STEP 3: PROCESS EACH MEDICINE
-            // =================================================
+            // ==========================================
 
             for (JsonNode medicineNode : medicines) {
 
                 String medicineName =
                         medicineNode
                                 .path("medicineName")
-                                .asText("")
-                                .trim();
+                                .asText();
 
                 String dosage =
                         medicineNode
                                 .path("dosage")
-                                .asText("")
-                                .trim();
+                                .asText();
 
                 String frequency =
                         medicineNode
                                 .path("frequency")
-                                .asText("")
-                                .trim();
+                                .asText();
 
                 String duration =
                         medicineNode
                                 .path("duration")
-                                .asText("")
-                                .trim();
+                                .asText();
 
 
-                if (medicineName.isEmpty()) {
-
-                    System.out.println(
-                            "Skipping medicine because name is empty."
-                    );
+                if (medicineName == null ||
+                        medicineName.trim().isEmpty()) {
 
                     continue;
                 }
@@ -212,7 +189,8 @@ public class PrescriptionServiceImpl
                 );
 
                 System.out.println(
-                        "Gemini Medicine: " + medicineName
+                        "Gemini Medicine: "
+                                + medicineName
                 );
 
                 System.out.println(
@@ -228,12 +206,14 @@ public class PrescriptionServiceImpl
                 );
 
 
-                // =================================================
-                // STEP 4: NORMALIZE
-                // =================================================
+                // ======================================
+                // STEP 4: NORMALIZE MEDICINE NAME
+                // ======================================
 
                 String normalizedName =
-                        normalizer.normalize(medicineName);
+                        normalizer.normalize(
+                                medicineName
+                        );
 
                 System.out.println(
                         "Normalized Medicine: "
@@ -241,14 +221,25 @@ public class PrescriptionServiceImpl
                 );
 
 
-                // =================================================
-                // STEP 5: MEDICINE DATABASE + RANKING
-                // =================================================
+                // ======================================
+                // STEP 5: EXISTING MEDICINE SEARCH
+                // ======================================
+                //
+                // We reuse your existing:
+                //
+                // MedicineService
+                // MedicineRepository
+                // MedicineSearchRanker
+                //
+                // This part is responsible for
+                // finding the best medicine match.
+                // ======================================
 
                 List<MedicineResponseDto> medicineResults =
                         medicineService.searchMedicine(
                                 normalizedName
                         );
+
 
                 System.out.println(
                         "Medicine Matches: "
@@ -256,176 +247,167 @@ public class PrescriptionServiceImpl
                 );
 
 
-                if (medicineResults.isEmpty()) {
+                // ======================================
+                // STEP 6: GET BEST MEDICINE
+                // ======================================
+
+                if (!medicineResults.isEmpty()) {
+
+                    MedicineResponseDto bestMedicine =
+                            medicineResults.get(0);
+
+
+                    System.out.println(
+                            "BEST MEDICINE: "
+                                    + bestMedicine.getName()
+                    );
+
+
+                    // ==================================
+                    // STEP 7: SEARCH PRODUCT TABLE
+                    // ==================================
+                    //
+                    // IMPORTANT:
+                    //
+                    // We do NOT use Medicine ID.
+                    //
+                    // We search the products table
+                    // using the matched medicine name.
+                    //
+                    // The Product ID obtained here
+                    // is the ID that Cart needs.
+                    // ==================================
+
+                    List<Product> products =
+                            productRepository
+                                    .findByNameContainingIgnoreCase(
+                                            bestMedicine.getName()
+                                    );
+
+
+                    System.out.println(
+                            "Product Matches: "
+                                    + products.size()
+                    );
+
+
+                    // ==================================
+                    // STEP 8: BEST PRODUCT
+                    // ==================================
+
+                    if (!products.isEmpty()) {
+
+                        Product bestProduct =
+                                products.get(0);
+
+
+                        PrescriptionResponseDto dto =
+                                new PrescriptionResponseDto();
+
+
+                        // ==================================
+                        // AI / PRESCRIPTION INFORMATION
+                        // ==================================
+
+                        dto.setMedicineName(
+                                medicineName
+                        );
+
+                        dto.setDosage(
+                                dosage
+                        );
+
+                        dto.setFrequency(
+                                frequency
+                        );
+
+                        dto.setDuration(
+                                duration
+                        );
+
+
+                        // ==================================
+                        // PRODUCT INFORMATION
+                        // ==================================
+
+                        dto.setProductId(
+                                bestProduct.getId()
+                        );
+
+                        dto.setProductName(
+                                bestProduct.getName()
+                        );
+
+                        dto.setPrice(
+                                bestProduct.getPrice()
+                        );
+
+
+                        finalResults.add(dto);
+
+
+                        // ==================================
+                        // DEBUG OUTPUT
+                        // ==================================
+
+                        System.out.println(
+                                "========== FINAL PRODUCT =========="
+                        );
+
+                        System.out.println(
+                                "Medicine: "
+                                        + medicineName
+                        );
+
+                        System.out.println(
+                                "Product Name: "
+                                        + bestProduct.getName()
+                        );
+
+                        System.out.println(
+                                "Product ID: "
+                                        + bestProduct.getId()
+                        );
+
+                        System.out.println(
+                                "Product Price: ₹"
+                                        + bestProduct.getPrice()
+                        );
+
+                        System.out.println(
+                                "Dosage: "
+                                        + dosage
+                        );
+
+                        System.out.println(
+                                "Frequency: "
+                                        + frequency
+                        );
+
+                        System.out.println(
+                                "Duration: "
+                                        + duration
+                        );
+
+                        System.out.println(
+                                "==================================="
+                        );
+
+
+                    } else {
+
+                        System.out.println(
+                                "NO PRODUCT FOUND FOR MEDICINE: "
+                                        + bestMedicine.getName()
+                        );
+                    }
+
+
+                } else {
 
                     System.out.println(
                             "NO MEDICINE FOUND: "
                                     + medicineName
-                    );
-
-                    continue;
-                }
-
-
-                /*
-                 * MedicineService has already performed
-                 * the medicine search and ranking.
-                 *
-                 * The first result is therefore the
-                 * highest-ranked medicine.
-                 */
-
-                MedicineResponseDto selectedMedicine =
-                        medicineResults.get(0);
-
-
-                System.out.println(
-                        "SELECTED MEDICINE: "
-                                + selectedMedicine.getName()
-                );
-
-
-                // =================================================
-                // STEP 6: SEARCH PRODUCT DATABASE
-                // =================================================
-
-                String productSearchName =
-                        selectedMedicine.getName();
-
-                System.out.println(
-                        "PRODUCT SEARCH NAME: "
-                                + productSearchName
-                );
-
-
-                List<Product> products =
-                        productRepository
-                                .findByNameContainingIgnoreCase(
-                                        productSearchName
-                                );
-
-
-                System.out.println(
-                        "PRODUCT MATCHES: "
-                                + products.size()
-                );
-
-
-                // =================================================
-                // STEP 7: NO PRODUCT
-                // =================================================
-
-                if (products.isEmpty()) {
-
-                    System.out.println(
-                            "NO PRODUCT FOUND"
-                    );
-
-                    System.out.println(
-                            "Medicine: "
-                                    + medicineName
-                    );
-
-                    System.out.println(
-                            "Selected Medicine: "
-                                    + selectedMedicine.getName()
-                    );
-
-                    System.out.println(
-                            "Product Search: "
-                                    + productSearchName
-                    );
-
-                    System.out.println(
-                            "-----------------------------------"
-                    );
-
-                    continue;
-                }
-
-
-                // =================================================
-                // STEP 8: PROCESS PRODUCTS
-                // =================================================
-
-                for (Product product : products) {
-
-                    System.out.println(
-                            "========== PRODUCT FOUND =========="
-                    );
-
-                    System.out.println(
-                            "Product ID: "
-                                    + product.getId()
-                    );
-
-                    System.out.println(
-                            "Product Name: "
-                                    + product.getName()
-                    );
-
-                    System.out.println(
-                            "Product Price: ₹"
-                                    + product.getPrice()
-                    );
-
-                    System.out.println(
-                            "Product Category: "
-                                    + product.getCategory()
-                    );
-
-
-                    // =================================================
-                    // STEP 9: CREATE RESPONSE
-                    // =================================================
-
-                    PrescriptionResponseDto dto =
-                            new PrescriptionResponseDto();
-
-
-                    // Prescription information
-
-                    dto.setMedicineName(
-                            medicineName
-                    );
-
-                    dto.setDosage(
-                            dosage
-                    );
-
-                    dto.setFrequency(
-                            frequency
-                    );
-
-                    dto.setDuration(
-                            duration
-                    );
-
-
-                    // Product information
-
-                    dto.setProductId(
-                            product.getId()
-                    );
-
-                    dto.setProductName(
-                            product.getName()
-                    );
-
-                    dto.setPrice(
-                            product.getPrice()
-                    );
-
-
-                    finalResults.add(dto);
-
-
-                    System.out.println(
-                            "Product added to final result."
-                    );
-
-                    System.out.println(
-                            "=================================="
                     );
                 }
             }
@@ -446,31 +428,13 @@ public class PrescriptionServiceImpl
         }
 
 
-        // =====================================================
-        // FINAL RESULT
-        // =====================================================
-
-        System.out.println(
-                "========== PRESCRIPTION FINAL RESULT =========="
-        );
-
-        System.out.println(
-                "Total products returned: "
-                        + finalResults.size()
-        );
-
-        System.out.println(
-                "================================================"
-        );
-
-
         return finalResults;
     }
 
 
-    // =========================================================
+    // ==============================================
     // CLEAN GEMINI JSON
-    // =========================================================
+    // ==============================================
 
     private String cleanJson(String response) {
 
@@ -480,7 +444,6 @@ public class PrescriptionServiceImpl
                     "Gemini returned empty response"
             );
         }
-
 
         response = response.trim();
 
