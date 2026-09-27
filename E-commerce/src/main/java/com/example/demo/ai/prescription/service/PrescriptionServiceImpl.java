@@ -306,8 +306,18 @@ public class PrescriptionServiceImpl
                 List<Product> products =
                         productRepository
                                 .findByNameContainingIgnoreCase(
-                                        bestMedicine.getName()
+                                        normalizedName
                                 );
+
+                if (products.isEmpty()
+                        && !normalizedName.equalsIgnoreCase(
+                                bestMedicine.getName()
+                        )) {
+                    products = productRepository
+                            .findByNameContainingIgnoreCase(
+                                    bestMedicine.getName()
+                            );
+                }
 
 
                 System.out.println(

@@ -6,8 +6,13 @@ import com.example.demo.ai.prescription.repository.MedicineRepository;
 import com.example.demo.ai.prescription.util.MedicineSearchRanker;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 @Service
 public class MedicineServiceImpl implements MedicineService {
@@ -30,19 +35,52 @@ public class MedicineServiceImpl implements MedicineService {
             return List.of();
         }
 
-String SearchName = name.trim();
+        String searchName = name.trim();
 
         System.out.println("=================================");
         System.out.println("MEDICINE SEARCH");
-        System.out.println("Search: " + SearchName);
+        System.out.println("Search: " + searchName);
         System.out.println("=================================");
 
         // Get medicines from database
-        List<Medicine> medicines =
+        List<Medicine> medicines = new ArrayList<>(
                 medicineRepository
                         .findByNameContainingIgnoreCaseAndDiscontinuedFalse(
-                                SearchName
+                                searchName
+                        )
+        );
+
+        if (medicines.isEmpty()) {
+            List<String> searchTerms = Arrays.stream(
+                            searchName.toLowerCase(Locale.ROOT)
+                                    .replaceAll("[^a-z0-9]+", " ")
+                                    .trim()
+                                    .split("\\s+")
+                    )
+                    .filter(term -> term.length() > 1)
+                    .toList();
+
+            Map<Long, Medicine> candidates = new LinkedHashMap<>();
+            for (String term : searchTerms) {
+                medicineRepository
+                        .findByNameContainingIgnoreCaseAndDiscontinuedFalse(term)
+                        .forEach(medicine ->
+                                candidates.putIfAbsent(medicine.getId(), medicine)
                         );
+            }
+
+            medicines = candidates.values().stream()
+                    .filter(medicine -> medicine.getName() != null)
+                    .filter(medicine -> {
+                        String normalizedMedicineName =
+                                medicine.getName().toLowerCase(Locale.ROOT)
+                                        .replaceAll("[^a-z0-9]+", "");
+                        return searchTerms.stream().allMatch(
+                                normalizedMedicineName::contains
+                        );
+                                        })
+                    .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+        }
 
         System.out.println(
                 "Database results: " + medicines.size()
@@ -53,7 +91,7 @@ String SearchName = name.trim();
                 Comparator.comparingInt(
                         (Medicine medicine) ->
                                 medicineSearchRanker
-                                        .calculateScore(name, medicine)
+                                        .calculateScore(searchName, medicine)
                 ).reversed()
         );
 
@@ -64,7 +102,7 @@ String SearchName = name.trim();
 
             int score =
                     medicineSearchRanker.calculateScore(
-                            name,
+                            searchName,
                             medicine
                     );
 
