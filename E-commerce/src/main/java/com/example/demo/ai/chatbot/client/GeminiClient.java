@@ -7,6 +7,11 @@ import org.slf4j.LoggerFactory;
 import com.google.genai.Client;
 import com.google.genai.types.GenerateContentResponse;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+
 @Component
 public class GeminiClient {
 
@@ -21,8 +26,9 @@ public class GeminiClient {
     @Value("${gemini.api.model:gemini-3.6-flash}")
     private String primaryModel = "gemini-3.6-flash";
 
-    @Value("${gemini.api.fallback-model:gemini-3.8-flash}")
-    private String fallbackModel = "gemini-3.8-flash";
+    @Value("${gemini.api.fallback-models:${gemini.api.fallback-model:gemini-3.8-flash,gemini-3.7-flash,gemini-3.5-flash-lite}}")
+    private String fallbackModels =
+            "gemini-3.8-flash,gemini-3.7-flash,gemini-3.5-flash-lite";
 
     public String askGemini(String prompt) {
         RuntimeException primaryFailure = null;
@@ -59,18 +65,50 @@ public class GeminiClient {
                         }
                 }
 
-        logger.warn(
-                "Primary Gemini model {} remained unavailable after {} attempts; trying fallback model {}",
-                primaryModel,
-                MAX_ATTEMPTS,
-                fallbackModel
-        );
-        try {
-                return generateContent(fallbackModel, prompt);
-        } catch (RuntimeException fallbackFailure) {
-                fallbackFailure.addSuppressed(primaryFailure);
-                throw fallbackFailure;
+        Set<String> attemptedModels = new LinkedHashSet<>();
+        attemptedModels.add(primaryModel);
+        List<RuntimeException> transientFailures = new ArrayList<>();
+        transientFailures.add(primaryFailure);
+
+        for (String configuredModel : fallbackModels.split(",")) {
+                String fallbackModel = configuredModel.trim();
+                if (fallbackModel.isEmpty() || !attemptedModels.add(fallbackModel)) {
+                        continue;
+                }
+
+                logger.warn(
+                        "Primary Gemini model {} remained unavailable after {} attempts; trying fallback model {}",
+                        primaryModel,
+                        MAX_ATTEMPTS,
+                        fallbackModel
+                );
+                try {
+                        return generateContent(fallbackModel, prompt);
+                } catch (RuntimeException fallbackFailure) {
+                        if (!isTransient(fallbackFailure)) {
+                                transientFailures.forEach(fallbackFailure::addSuppressed);
+                                throw fallbackFailure;
+                        }
+
+                        transientFailures.add(fallbackFailure);
+                        logger.warn(
+                                "Fallback Gemini model {} is temporarily unavailable",
+                                fallbackModel
+                        );
+                }
         }
+
+        RuntimeException lastFailure =
+                transientFailures.get(transientFailures.size() - 1);
+        IllegalStateException allModelsUnavailable = new IllegalStateException(
+                "All configured Gemini models are temporarily unavailable: "
+                        + String.join(", ", attemptedModels),
+                lastFailure
+        );
+        transientFailures.stream()
+                .filter(failure -> failure != lastFailure)
+                .forEach(allModelsUnavailable::addSuppressed);
+        throw allModelsUnavailable;
         }
 
         protected String generateContent(String model, String prompt) {

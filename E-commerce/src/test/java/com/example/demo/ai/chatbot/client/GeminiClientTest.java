@@ -72,4 +72,38 @@ class GeminiClientTest {
         assertEquals(3, primaryAttempts.get());
         assertEquals(1, fallbackAttempts.get());
     }
+
+    @Test
+    void triesNextFallbackWhenFirstFallbackAlsoReturns503() {
+        AtomicInteger primaryAttempts = new AtomicInteger();
+        AtomicInteger firstFallbackAttempts = new AtomicInteger();
+        AtomicInteger secondFallbackAttempts = new AtomicInteger();
+        GeminiClient client = new GeminiClient() {
+            @Override
+            protected String generateContent(String model, String prompt) {
+                if (model.equals("gemini-3.6-flash")) {
+                    primaryAttempts.incrementAndGet();
+                    throw new RuntimeException("503 Service Unavailable: high demand");
+                }
+                if (model.equals("gemini-3.8-flash")) {
+                    firstFallbackAttempts.incrementAndGet();
+                    throw new RuntimeException("503 Service Unavailable: high demand");
+                }
+                if (model.equals("gemini-3.7-flash")) {
+                    secondFallbackAttempts.incrementAndGet();
+                    return "second fallback response";
+                }
+                throw new AssertionError("Unexpected Gemini model: " + model);
+            }
+
+            @Override
+            protected void waitBeforeRetry(long delayMillis) {
+            }
+        };
+
+        assertEquals("second fallback response", client.askGemini("prompt"));
+        assertEquals(3, primaryAttempts.get());
+        assertEquals(1, firstFallbackAttempts.get());
+        assertEquals(1, secondFallbackAttempts.get());
+    }
 }
