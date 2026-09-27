@@ -18,18 +18,30 @@ public class GeminiClient {
     @Value("${gemini.api.key}")
     private String apiKey;
 
+    @Value("${gemini.api.model:gemini-3.6-flash}")
+    private String primaryModel = "gemini-3.6-flash";
+
+    @Value("${gemini.api.fallback-model:gemini-3.8-flash}")
+    private String fallbackModel = "gemini-3.8-flash";
+
     public String askGemini(String prompt) {
+        RuntimeException primaryFailure = null;
                 for (int attempt = 1; ; attempt++) {
                         try {
-                                return generateContent(prompt);
+                                return generateContent(primaryModel, prompt);
                         } catch (RuntimeException exception) {
                                 if (attempt >= MAX_ATTEMPTS || !isTransient(exception)) {
-                                        throw exception;
+                                        if (!isTransient(exception)) {
+                                                throw exception;
+                                        }
+                                        primaryFailure = exception;
+                                        break;
                                 }
 
                                 long delayMillis = INITIAL_RETRY_DELAY_MS * (1L << (attempt - 1));
                                 logger.warn(
-                                                "Transient Gemini failure on attempt {}/{}; retrying in {} ms",
+                                                "Transient Gemini failure for model {} on attempt {}/{}; retrying in {} ms",
+                                                primaryModel,
                                                 attempt,
                                                 MAX_ATTEMPTS,
                                                 delayMillis
@@ -46,16 +58,29 @@ public class GeminiClient {
                                 }
                         }
                 }
+
+        logger.warn(
+                "Primary Gemini model {} remained unavailable after {} attempts; trying fallback model {}",
+                primaryModel,
+                MAX_ATTEMPTS,
+                fallbackModel
+        );
+        try {
+                return generateContent(fallbackModel, prompt);
+        } catch (RuntimeException fallbackFailure) {
+                fallbackFailure.addSuppressed(primaryFailure);
+                throw fallbackFailure;
+        }
         }
 
-        protected String generateContent(String prompt) {
+        protected String generateContent(String model, String prompt) {
         Client client = Client.builder()
                 .apiKey(apiKey)
                 .build();
 
         GenerateContentResponse response =
                 client.models.generateContent(
-                        "gemini-3.6-flash",
+                        model,
                         prompt,
                         null
                 );
