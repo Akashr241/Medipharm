@@ -13,7 +13,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 @Service
 public class PrescriptionServiceImpl
@@ -278,46 +282,30 @@ public class PrescriptionServiceImpl
                 // STEP 6: GET BEST MEDICINE
                 // ======================================
 
+                MedicineResponseDto bestMedicine = null;
                 if (medicineResults.isEmpty()) {
 
                     System.out.println(
                             "NO MEDICINE FOUND: "
                                     + medicineName
                     );
-
-                    continue;
+                } else {
+                    bestMedicine = medicineResults.get(0);
+                    System.out.println(
+                            "BEST MEDICINE: "
+                                    + bestMedicine.getName()
+                    );
                 }
-
-
-                MedicineResponseDto bestMedicine =
-                        medicineResults.get(0);
-
-
-                System.out.println(
-                        "BEST MEDICINE: "
-                                + bestMedicine.getName()
-                );
 
 
                 // ======================================
                 // STEP 7: SEARCH PRODUCT TABLE
                 // ======================================
 
-                List<Product> products =
-                        productRepository
-                                .findByNameContainingIgnoreCase(
-                                        normalizedName
-                                );
-
-                if (products.isEmpty()
-                        && !normalizedName.equalsIgnoreCase(
-                                bestMedicine.getName()
-                        )) {
-                    products = productRepository
-                            .findByNameContainingIgnoreCase(
-                                    bestMedicine.getName()
-                            );
-                }
+                List<Product> products = searchProducts(
+                        normalizedName,
+                        bestMedicine == null ? null : bestMedicine.getName()
+                );
 
 
                 System.out.println(
@@ -377,7 +365,7 @@ public class PrescriptionServiceImpl
 
                     System.out.println(
                             "NO PRODUCT FOUND FOR MEDICINE: "
-                                    + bestMedicine.getName()
+                                    + medicineName
                     );
 
                     continue;
@@ -561,6 +549,57 @@ public class PrescriptionServiceImpl
 
 
         return finalResults;
+    }
+
+    private List<Product> searchProducts(
+            String prescriptionName,
+            String catalogueName) {
+
+        List<Product> products = productRepository
+                .findByNameContainingIgnoreCase(prescriptionName);
+        if (!products.isEmpty()) {
+            return products;
+        }
+
+        List<String> nameTokens = Arrays.stream(
+                        prescriptionName.toLowerCase(Locale.ROOT)
+                                .split("[^a-z0-9]+")
+                )
+                .filter(token -> !token.isBlank())
+                .toList();
+
+        Map<Long, Product> candidates = new LinkedHashMap<>();
+        nameTokens.stream()
+                .filter(token -> token.length() > 1)
+                .forEach(token -> productRepository
+                        .findByNameContainingIgnoreCase(token)
+                        .forEach(product ->
+                                candidates.putIfAbsent(product.getId(), product)
+                        ));
+
+        products = candidates.values().stream()
+                .filter(product -> product.getName() != null)
+                .filter(product -> {
+                    String normalizedProductName = product.getName()
+                            .toLowerCase(Locale.ROOT)
+                            .replaceAll("[^a-z0-9]+", "");
+                    return nameTokens.stream().allMatch(
+                            normalizedProductName::contains
+                    );
+                })
+                .toList();
+        if (!products.isEmpty()) {
+            return products;
+        }
+
+        if (catalogueName != null
+                && !catalogueName.isBlank()
+                && !catalogueName.equalsIgnoreCase(prescriptionName)) {
+            return productRepository
+                    .findByNameContainingIgnoreCase(catalogueName);
+        }
+
+        return List.of();
     }
 
 

@@ -19,6 +19,41 @@ import static org.mockito.Mockito.when;
 class PrescriptionServiceImplTest {
 
     @Test
+    void returnsProductWhenMedicineCatalogueHasNoMatch() {
+        GeminiClient geminiClient = mock(GeminiClient.class);
+        MedicineService medicineService = mock(MedicineService.class);
+        ProductRepository productRepository = mock(ProductRepository.class);
+        Product product = mock(Product.class);
+        when(product.getId()).thenReturn(23L);
+        when(product.getName()).thenReturn("Calpol Syrup");
+        when(product.getPrice()).thenReturn(35.0);
+
+        when(geminiClient.askGemini(anyString())).thenReturn("""
+                [{"medicineName":"Calpol","dosage":"6ml","frequency":"thrice daily","duration":"3 days"}]
+                """);
+        when(medicineService.searchMedicine("Calpol"))
+                .thenReturn(List.of());
+        when(productRepository.findByNameContainingIgnoreCase("Calpol"))
+                .thenReturn(List.of(product));
+
+        PrescriptionServiceImpl service = new PrescriptionServiceImpl(
+                geminiClient,
+                new ObjectMapper(),
+                medicineService,
+                productRepository,
+                new MedicineNameNormalizer()
+        );
+
+        var results = service.analyzePrescription("Syp Calpol 6 ml");
+
+        assertEquals(1, results.size());
+        assertEquals(23L, results.get(0).getProductId());
+        assertEquals("Calpol Syrup", results.get(0).getProductName());
+        verify(productRepository)
+                .findByNameContainingIgnoreCase("Calpol");
+    }
+
+    @Test
     void searchesProductsUsingPrescriptionMedicineNameFirst() {
         GeminiClient geminiClient = mock(GeminiClient.class);
         MedicineService medicineService = mock(MedicineService.class);
