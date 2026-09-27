@@ -23,12 +23,12 @@ public class GeminiClient {
     @Value("${gemini.api.key}")
     private String apiKey;
 
-    @Value("${gemini.api.model:gemini-3.6-flash}")
-    private String primaryModel = "gemini-3.6-flash";
+        @Value("${gemini.api.model:gemini-3.8-flash}")
+        private String primaryModel = "gemini-3.8-flash";
 
     @Value("${gemini.api.fallback-models:${gemini.api.fallback-model:gemini-3.8-flash,gemini-3.7-flash,gemini-3.5-flash-lite}}")
     private String fallbackModels =
-            "gemini-3.8-flash,gemini-3.7-flash,gemini-3.5-flash-lite";
+            "gemini-3.7-flash,gemini-3.6-flash,gemini-3.5-flash-lite";
 
     public String askGemini(String prompt) {
         RuntimeException primaryFailure = null;

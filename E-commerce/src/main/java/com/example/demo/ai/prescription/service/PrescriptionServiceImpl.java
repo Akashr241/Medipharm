@@ -367,6 +367,8 @@ public class PrescriptionServiceImpl
                             "NO PRODUCT FOUND FOR MEDICINE: "
                                     + medicineName
                     );
+
+                                        continue;
                 }
 
 
@@ -427,7 +429,7 @@ public class PrescriptionServiceImpl
                 // ======================================
 
                 dto.setMedicineName(
-                        medicineName
+                        normalizedName
                 );
 
                 dto.setDosage(

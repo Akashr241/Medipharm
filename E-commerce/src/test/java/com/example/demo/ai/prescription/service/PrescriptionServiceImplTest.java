@@ -19,7 +19,7 @@ import static org.mockito.Mockito.when;
 class PrescriptionServiceImplTest {
 
     @Test
-    void returnsAllDetectedMedicinesWhenOneHasNoStoreProduct() {
+        void returnsOnlyMedicinesWithStoreProductsWhenOneHasNoMatch() {
         GeminiClient geminiClient = mock(GeminiClient.class);
         MedicineService medicineService = mock(MedicineService.class);
         ProductRepository productRepository = mock(ProductRepository.class);
@@ -49,10 +49,11 @@ class PrescriptionServiceImplTest {
 
         var results = service.analyzePrescription("Prescription with three medicines");
 
-        assertEquals(3, results.size());
-        assertEquals("Delcon", results.get(1).getMedicineName());
-        assertEquals(null, results.get(1).getProductId());
-        assertEquals(null, results.get(1).getProductName());
+        assertEquals(2, results.size());
+        assertEquals("Calpol", results.get(0).getMedicineName());
+        assertEquals("Levolin", results.get(1).getMedicineName());
+        assertEquals(31L, results.get(0).getProductId());
+        assertEquals(32L, results.get(1).getProductId());
     }
 
     @Test
@@ -103,7 +104,7 @@ class PrescriptionServiceImplTest {
         when(product.getPrice()).thenReturn(42.0);
 
         when(geminiClient.askGemini(anyString())).thenReturn("""
-                [{"medicineName":"Levolin","dosage":"3ml","frequency":"three times daily","duration":"5 days"}]
+                [{"medicineName":"Syp. Levolin","dosage":"3ml","frequency":"three times daily","duration":"5 days"}]
                 """);
         when(medicineService.searchMedicine("Levolin"))
                 .thenReturn(List.of(medicine));
@@ -121,6 +122,7 @@ class PrescriptionServiceImplTest {
         var results = service.analyzePrescription("Syp Levolin 3 ml");
 
         assertEquals(1, results.size());
+        assertEquals("Levolin", results.get(0).getMedicineName());
         assertEquals(17L, results.get(0).getProductId());
         assertEquals("Levolin Syrup", results.get(0).getProductName());
         verify(productRepository)

@@ -52,11 +52,11 @@ class GeminiClientTest {
         GeminiClient client = new GeminiClient() {
             @Override
             protected String generateContent(String model, String prompt) {
-                if (model.equals("gemini-3.6-flash")) {
+                if (model.equals("gemini-3.8-flash")) {
                     primaryAttempts.incrementAndGet();
                     throw new RuntimeException("503 Service Unavailable: high demand");
                 }
-                if (model.equals("gemini-3.8-flash")) {
+                if (model.equals("gemini-3.7-flash")) {
                     fallbackAttempts.incrementAndGet();
                     return "fallback response";
                 }
@@ -81,15 +81,15 @@ class GeminiClientTest {
         GeminiClient client = new GeminiClient() {
             @Override
             protected String generateContent(String model, String prompt) {
-                if (model.equals("gemini-3.6-flash")) {
+                if (model.equals("gemini-3.8-flash")) {
                     primaryAttempts.incrementAndGet();
                     throw new RuntimeException("503 Service Unavailable: high demand");
                 }
-                if (model.equals("gemini-3.8-flash")) {
+                if (model.equals("gemini-3.7-flash")) {
                     firstFallbackAttempts.incrementAndGet();
                     throw new RuntimeException("503 Service Unavailable: high demand");
                 }
-                if (model.equals("gemini-3.7-flash")) {
+                if (model.equals("gemini-3.6-flash")) {
                     secondFallbackAttempts.incrementAndGet();
                     return "second fallback response";
                 }
