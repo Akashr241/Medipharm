@@ -19,6 +19,43 @@ import static org.mockito.Mockito.when;
 class PrescriptionServiceImplTest {
 
     @Test
+    void returnsAllDetectedMedicinesWhenOneHasNoStoreProduct() {
+        GeminiClient geminiClient = mock(GeminiClient.class);
+        MedicineService medicineService = mock(MedicineService.class);
+        ProductRepository productRepository = mock(ProductRepository.class);
+        Product calpol = product(31L, "Calpol Syrup", 35.0);
+        Product levolin = product(32L, "Levolin Syrup", 42.0);
+
+        when(geminiClient.askGemini(anyString())).thenReturn("""
+                [
+                  {"medicineName":"Calpol","dosage":"6ml","frequency":"thrice daily","duration":"3 days"},
+                  {"medicineName":"Delcon","dosage":"3ml","frequency":"thrice daily","duration":"5 days"},
+                  {"medicineName":"Levolin","dosage":"3ml","frequency":"thrice daily","duration":"5 days"}
+                ]
+                """);
+        when(medicineService.searchMedicine(anyString())).thenReturn(List.of());
+        when(productRepository.findByNameContainingIgnoreCase("Calpol"))
+                .thenReturn(List.of(calpol));
+        when(productRepository.findByNameContainingIgnoreCase("Levolin"))
+                .thenReturn(List.of(levolin));
+
+        PrescriptionServiceImpl service = new PrescriptionServiceImpl(
+                geminiClient,
+                new ObjectMapper(),
+                medicineService,
+                productRepository,
+                new MedicineNameNormalizer()
+        );
+
+        var results = service.analyzePrescription("Prescription with three medicines");
+
+        assertEquals(3, results.size());
+        assertEquals("Delcon", results.get(1).getMedicineName());
+        assertEquals(null, results.get(1).getProductId());
+        assertEquals(null, results.get(1).getProductName());
+    }
+
+    @Test
     void returnsProductWhenMedicineCatalogueHasNoMatch() {
         GeminiClient geminiClient = mock(GeminiClient.class);
         MedicineService medicineService = mock(MedicineService.class);
@@ -89,4 +126,12 @@ class PrescriptionServiceImplTest {
         verify(productRepository)
                 .findByNameContainingIgnoreCase("Levolin");
     }
+
+        private Product product(Long id, String name, double price) {
+                Product product = mock(Product.class);
+                when(product.getId()).thenReturn(id);
+                when(product.getName()).thenReturn(name);
+                when(product.getPrice()).thenReturn(price);
+                return product;
+        }
 }

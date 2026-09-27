@@ -367,8 +367,6 @@ public class PrescriptionServiceImpl
                             "NO PRODUCT FOUND FOR MEDICINE: "
                                     + medicineName
                     );
-
-                    continue;
                 }
 
 
@@ -385,32 +383,35 @@ public class PrescriptionServiceImpl
                  * Medicine ID is NEVER used as Product ID.
                  */
 
-                Product bestProduct =
-                        products.get(0);
+                Product bestProduct = products.isEmpty()
+                        ? null
+                        : products.get(0);
 
 
-                System.out.println(
-                        "========== BEST PRODUCT =========="
-                );
+                if (bestProduct != null) {
+                    System.out.println(
+                            "========== BEST PRODUCT =========="
+                    );
 
-                System.out.println(
-                        "Product Name: "
-                                + bestProduct.getName()
-                );
+                    System.out.println(
+                            "Product Name: "
+                                    + bestProduct.getName()
+                    );
 
-                System.out.println(
-                        "Product ID: "
-                                + bestProduct.getId()
-                );
+                    System.out.println(
+                            "Product ID: "
+                                    + bestProduct.getId()
+                    );
 
-                System.out.println(
-                        "Product Price: ₹"
-                                + bestProduct.getPrice()
-                );
+                    System.out.println(
+                            "Product Price: ₹"
+                                    + bestProduct.getPrice()
+                    );
 
-                System.out.println(
-                        "=================================="
-                );
+                    System.out.println(
+                            "=================================="
+                    );
+                }
 
 
                 // ======================================
@@ -446,17 +447,11 @@ public class PrescriptionServiceImpl
                 // PRODUCT INFORMATION
                 // ======================================
 
-                dto.setProductId(
-                        bestProduct.getId()
-                );
-
-                dto.setProductName(
-                        bestProduct.getName()
-                );
-
-                dto.setPrice(
-                        bestProduct.getPrice()
-                );
+                if (bestProduct != null) {
+                    dto.setProductId(bestProduct.getId());
+                    dto.setProductName(bestProduct.getName());
+                    dto.setPrice(bestProduct.getPrice());
+                }
 
 
                 // ======================================
@@ -481,18 +476,22 @@ public class PrescriptionServiceImpl
 
                 System.out.println(
                         "Product: "
-                                + bestProduct.getName()
+                                + (bestProduct == null
+                                        ? "No matching store product"
+                                        : bestProduct.getName())
                 );
 
-                System.out.println(
-                        "Product ID: "
-                                + bestProduct.getId()
-                );
+                if (bestProduct != null) {
+                    System.out.println(
+                            "Product ID: "
+                                    + bestProduct.getId()
+                    );
 
-                System.out.println(
-                        "Price: ₹"
-                                + bestProduct.getPrice()
-                );
+                    System.out.println(
+                            "Price: ₹"
+                                    + bestProduct.getPrice()
+                    );
+                }
 
                 System.out.println(
                         "Dosage: "

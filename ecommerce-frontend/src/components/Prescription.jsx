@@ -341,11 +341,11 @@ function Prescription() {
 
                         <div className="row g-4">
 
-                            {results.map((medicine) => (
+                            {results.map((medicine, index) => (
 
                                 <div
                                     className="col-md-6 col-lg-4"
-                                    key={medicine.productId}
+                                    key={medicine.productId ?? `${medicine.medicineName}-${index}`}
                                 >
 
                                     <div className="card h-100 border-0 shadow-sm rounded-4">
@@ -445,16 +445,13 @@ function Prescription() {
                                             ================================== */}
 
                                             <small className="text-muted">
-
-                                                Matched Product
-
+                                                {medicine.productName
+                                                    ? "Matched Product"
+                                                    : "Store availability"}
                                             </small>
 
-
                                             <h5 className="fw-bold mt-1">
-
-                                                {medicine.productName}
-
+                                                {medicine.productName || "No matching product found"}
                                             </h5>
 
 
@@ -508,27 +505,25 @@ function Prescription() {
 
                                                 {/* PRICE */}
 
-                                                <span className="fs-4 fw-bold">
-
-                                                    ₹{medicine.price}
-
-                                                </span>
+                                                {medicine.price != null && (
+                                                    <span className="fs-4 fw-bold">
+                                                        ₹{medicine.price}
+                                                    </span>
+                                                )}
 
 
                                                 {/* VIEW MEDICINE */}
 
-                                                <button
-                                                    className="btn btn-success rounded-pill px-4"
-                                                    onClick={() =>
-                                                        handleViewMedicine(
-                                                            medicine
-                                                        )
-                                                    }
-                                                >
-
-                                                    View Medicine
-
-                                                </button>
+                                                {medicine.productId != null && (
+                                                    <button
+                                                        className="btn btn-success rounded-pill px-4"
+                                                        onClick={() =>
+                                                            handleViewMedicine(medicine)
+                                                        }
+                                                    >
+                                                        View Medicine
+                                                    </button>
+                                                )}
 
                                             </div>
 
