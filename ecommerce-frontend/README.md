@@ -1,70 +1,113 @@
-# Getting Started with Create React App
+# MediPharm — AI-Powered Pharmacy Platform
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+An AI-powered pharmacy e-commerce application built with **Spring Boot, PostgreSQL and React**. MediPharm evolved from my production E-Commerce project (JWT auth, cart, checkout, Razorpay payments) and adds a prescription pipeline: upload a prescription, extract the text with OCR, and match it to real medicines.
 
-## Available Scripts
+> **Status:** Actively in development (since Dec 2025). The core commerce flow is working; the prescription AI pipeline and deployment are in progress.
 
-In the project directory, you can run:
+🔗 **Live Demo:** [ADD-FRONTEND-LINK-HERE](https://medipharm-eosin.vercel.app/)
+🔗 **Backend API:** https://medipharm-backend-91t4.onrender.com
 
-### `npm start`
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Features
 
-### `npm test`
+- **Prescription upload with OCR** — extracts text from prescription images using Tesseract
+- **AI medicine name normalization** — cleans up raw OCR text into proper medicine names
+- **Fuzzy medicine search** — PostgreSQL `pg_trgm` trigram matching over 250k+ Indian medicine records, so typos and OCR misreads still find the right medicine
+- **AI-generated image detection** — Java-native heuristic (EXIF metadata + pixel-level analysis) that screens uploaded prescriptions before OCR, with no external API
+- **Medicine catalog and cart** — browse, search and add medicines to the cart
+- **Payments** — Razorpay payment flow (simulation on the frontend)
+- **Reminders** — medicine reminder feature on the frontend
+- **Secure backend** — JWT authentication and role-based authorization with Spring Security
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+---
 
-### `npm run build`
+## Tech Stack
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+| Layer | Technology |
+|---|---|
+| Backend | Java, Spring Boot, Spring Security, Spring Data JPA, Hibernate |
+| Database | PostgreSQL (`pg_trgm` extension) |
+| Frontend | React.js |
+| OCR | Tesseract |
+| Payments | Razorpay |
+| Auth | JWT, role-based authorization |
+| Tools | Maven, Postman, Swagger, Git |
+| Deployment | Vercel (frontend), Render / Railway (backend) |
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+---
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## How the Prescription Pipeline Works
 
-### `npm run eject`
+```
+Upload image → AI-image check (EXIF + pixel analysis) → Tesseract OCR
+→ Name normalization → pg_trgm fuzzy match against medicine dataset → Add to cart
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+---
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## Dataset
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+Medicine data comes from the open-source [Indian Medicine Dataset](https://github.com/junioralive/Indian-Medicine-Dataset) (CSV), self-hosted in PostgreSQL.
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+---
 
-## Learn More
+## Getting Started
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+### Prerequisites
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+- Java 17+ (or the version your project uses)
+- Maven
+- PostgreSQL (with the `pg_trgm` extension enabled)
+- Node.js and npm
+- Tesseract OCR installed locally
 
-### Code Splitting
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+### 2. Set up the database
 
-### Analyzing the Bundle Size
+```sql
+CREATE DATABASE medipharm;
+\c medipharm
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+Then import the medicine dataset CSV into your medicines table.
 
-### Making a Progressive Web App
+### 3. Run the backend
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+Set your database and secret values in `application.properties` (or environment variables), then:
 
-### Advanced Configuration
+```bash
+cd backend
+mvn spring-boot:run
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+### 4. Run the frontend
 
-### Deployment
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+The frontend runs on `http://localhost:5173` by default.
 
-### `npm run build` fails to minify
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## Roadmap
+
+- [ ] Containerize the Spring Boot backend with Docker
+- [ ] Complete backend-to-frontend integration for the prescription flow
+- [ ] Deploy backend and frontend
+- [ ] Add integration tests
+
+---
+
+## Author
+
+**Akash R** — Java Full Stack Developer
+
+- 📧 [akashr.offical7@gmail.com](mailto:akashr.offical7@gmail.com)
+- 💼 [LinkedIn](https://www.linkedin.com/in/akashr5)
+- 🐙 [GitHub](https://github.com/Akashr241)
+- 🌐 [Portfolio](https://portfolio-main-lime-mu.vercel.app)
