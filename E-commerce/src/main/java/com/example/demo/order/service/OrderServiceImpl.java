@@ -180,8 +180,8 @@ public List<OrderResponseDto> getOrdersByStatus(String status) {
             .map(OrderMapper::mapToOrderResponseDto)
             .toList();
 }
+@Transactional
 @Override
-@Transactional(readOnly = true)
 public List<OrderResponseDto> getAllOrders() {
 
     return orderRepository.findAll()
@@ -189,8 +189,8 @@ public List<OrderResponseDto> getAllOrders() {
             .map(OrderMapper::mapToOrderResponseDto)
             .toList();
 }
+@Transactional
 @Override
-@Transactional(readOnly=true)
 public OrderResponseDto getOrderById(Long orderId) {
 
     Order order = orderRepository.findById(orderId)
@@ -199,7 +199,7 @@ public OrderResponseDto getOrderById(Long orderId) {
 
     return OrderMapper.mapToOrderResponseDto(order);
 }
-
+@Transactional
 @Override
 public void cancelOrder(Long orderId) {
     Order order = orderRepository.findById(orderId)
