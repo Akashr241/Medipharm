@@ -181,6 +181,7 @@ public List<OrderResponseDto> getOrdersByStatus(String status) {
             .toList();
 }
 @Override
+@Transactional(readOnly = true)
 public List<OrderResponseDto> getAllOrders() {
 
     return orderRepository.findAll()
