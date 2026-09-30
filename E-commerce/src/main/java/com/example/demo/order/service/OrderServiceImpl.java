@@ -125,9 +125,8 @@ String email = SecurityContextHolder
 
         return OrderMapper.mapToOrderResponseDto(savedOrder);
     }
-    
+@Transactional    
 @Override
-@Transactional(readOnly=true)
 public List<OrderHistoryResponseDto> getMyOrders() {
 
     Authentication authentication =
@@ -147,7 +146,7 @@ public List<OrderHistoryResponseDto> getMyOrders() {
             .toList();
 }
 
-
+@Transactional
 @Override
 public OrderResponseDto updateOrderStatus(
         Long orderId,
@@ -164,6 +163,7 @@ public OrderResponseDto updateOrderStatus(
 
     return OrderMapper.mapToOrderResponseDto(order);
 }
+@Transactional
 @Override
 public List<OrderResponseDto> getOrdersByStatus(String status) {
 
