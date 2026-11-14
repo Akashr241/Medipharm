@@ -8,19 +8,19 @@ COPY mvnw .
 COPY pom.xml .
 
 RUN chmod +x mvnw
-
-RUN ./mvnw dependency:go-offline
+RUN ./mvnw -B dependency:go-offline
 
 COPY src src
 
-RUN ./mvnw clean package -DskipTests
+# Run JUnit tests as part of every Docker/Render build.
+RUN ./mvnw -B clean verify
 
 # ---------- Runtime Stage ----------
 FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 
-# Install Tesseract OCR and Leptonica
+# Install Tesseract OCR and English language data for prescription OCR.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     tesseract-ocr \
@@ -29,10 +29,9 @@ RUN apt-get update && \
     libleptonica-dev && \
     rm -rf /var/lib/apt/lists/*
 
-    
-
 COPY --from=build /app/target/*.jar app.jar
 
 EXPOSE 8080
 
+# Keep the JVM as PID 1 so Render receives shutdown signals and console logs.
 ENTRYPOINT ["java", "-jar", "app.jar"]
